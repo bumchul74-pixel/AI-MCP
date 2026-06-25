@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: ai-mcp
+  ai:
+    mcp:
+      server:
+        enabled: true
+        stdio: false
+        name: ai-mcp-server
+        version: 0.0.1
+        instructions: Read-only MCP server exposing project structure analysis tools and server metadata.
+        type: SYNC
+        protocol: STREAMABLE
+        request-timeout: 20s
+        capabilities:
+          tool: true
+          resource: true
+          prompt: true
+          completion: false
+        annotation-scanner:
+          enabled: true
+        streamable-http:
+          mcp-endpoint: /mcp
+          keep-alive-interval: 30s
+          disallow-delete: true
+
+mcp:
+  server:
+    metadata:
+      name: ai-mcp-server
+      version: 0.0.1
+      description: MCP server for analyzing Gradle/Spring Boot project structure.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+server:
+  port: 8092
+logging:
+  file:
+    path: ${LOG_PATH:./logs/ai-mcp}
+  level:
+    root: INFO
+    com.hanwha.mcp: INFO
