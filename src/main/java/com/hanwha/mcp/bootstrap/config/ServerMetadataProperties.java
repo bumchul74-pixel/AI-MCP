@@ -10,4 +10,20 @@ public record ServerMetadataProperties(
 		@NotBlank String name,
 		@NotBlank String version,
 		@NotBlank String description) {
+
+	public ServerMetadataProperties {
+		name = defaultIfBlank(name, "ai-mcp-server");
+		version = defaultIfBlank(version, "0.0.1");
+		description = defaultIfBlank(
+				description,
+				"MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.");
+	}
+
+	private static String defaultIfBlank(String value, String defaultValue) {
+		if (value == null || value.isBlank()) {
+			return defaultValue;
+		}
+		return value.trim();
+	}
+
 }

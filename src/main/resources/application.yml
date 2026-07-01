@@ -8,7 +8,7 @@ spring:
         stdio: false
         name: ai-mcp-server
         version: 0.0.1
-        instructions: Read-only MCP server exposing project structure analysis tools and server metadata.
+        instructions: MCP server exposing project analysis, server metadata, and DB-backed MyBatis artifact generation tools.
         type: SYNC
         protocol: STREAMABLE
         request-timeout: 20s
@@ -29,8 +29,17 @@ mcp:
     metadata:
       name: ai-mcp-server
       version: 0.0.1
-      description: MCP server for analyzing Gradle/Spring Boot project structure.
+      description: MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.
 
+  mybatis:
+    datasource:
+      url: ${MCP_MYBATIS_DB_URL:jdbc:postgresql://localhost:5432/mcp}
+      username: ${MCP_MYBATIS_DB_USERNAME:mcp}
+      password: ${MCP_MYBATIS_DB_PASSWORD:mcp}
+      driver-class-name: ${MCP_MYBATIS_DB_DRIVER:org.postgresql.Driver}
+    generator:
+      base-package: ${MCP_MYBATIS_BASE_PACKAGE:com.example.app}
+      default-schema: ${MCP_MYBATIS_DEFAULT_SCHEMA:}
 management:
   endpoints:
     web:
