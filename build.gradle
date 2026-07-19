@@ -36,6 +36,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
 	implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc'
 	implementation 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -44,4 +45,20 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'docker-integration'
+	}
+	systemProperty 'spring.ai.mcp.client.enabled', 'false'
+}
+
+tasks.register('legacyInterfaceMcpTest', Test) {
+	group = 'verification'
+	description = 'Calls the legacy-interface MCP server running in Docker.'
+	useJUnitPlatform {
+		includeTags 'docker-integration'
+	}
+	systemProperty 'legacy.interface.mcp.url',
+		System.getProperty('legacy.interface.mcp.url')
+			?: System.getenv('LEGACY_INTERFACE_MCP_URL')
+			?: 'http://localhost:18090/mcp'
 }

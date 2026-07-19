@@ -206,6 +206,42 @@ is optional for all table-scoped tools, and table names may be passed as
   ordinal position, index type, sort direction, cardinality, pages, and filter condition.
 - `describe_database_comments`: returns table remarks and column remarks.
 
+### Secure coding tools
+
+The server connects to the configured `secure-coding-mcp` Streamable HTTP endpoint
+and re-exposes its Semgrep CE tools through this server's `/mcp` endpoint. Tool
+input and output schemas are discovered from the downstream MCP server.
+
+- `scan_project`: scans a Java project below the downstream server's workspace.
+- `scan_file`: scans one Java file below the downstream server's workspace.
+- `scan_source`: scans UTF-8 Java source content without a shared filesystem.
+- `list_rules`: lists the Semgrep rule sets available on the downstream server.
+
+Example `scan_project` arguments:
+
+```yaml
+path: my-java-project
+ruleSets:
+  - java-security
+```
+
+`ruleSets` is optional. Paths used by `scan_project` and `scan_file` are resolved by
+`secure-coding-mcp`, so those tools still require a mounted source workspace.
+
+Example `scan_source` arguments:
+
+```json
+{
+  "fileName": "UserService.java",
+  "source": "public class UserService {}",
+  "ruleSets": ["java-security"]
+}
+```
+
+`scan_source` forwards the source as an MCP tool argument. AI-MCP does not persist or
+log the source. The downstream server creates an isolated temporary file for Semgrep
+and deletes it immediately after the scan.
+
 Example table lookup input:
 
 ```json
@@ -257,6 +293,10 @@ Important properties:
 ```yaml
 spring.ai.mcp.server.protocol: STREAMABLE
 spring.ai.mcp.server.streamable-http.mcp-endpoint: /mcp
+spring.ai.mcp.server.expose-mcp-client-tools: true
+spring.ai.mcp.client.enabled: ${SECURE_CODING_MCP_ENABLED:true}
+spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.url: ${SECURE_CODING_MCP_URL:http://localhost:18090}
+spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.endpoint: ${SECURE_CODING_MCP_ENDPOINT:/mcp}
 mcp.server.metadata.name: ai-mcp-server
 mcp.server.metadata.version: 0.0.1
 mcp.server.metadata.description: MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.
@@ -270,6 +310,22 @@ mcp.mybatis.generator.default-schema: ${MCP_MYBATIS_DEFAULT_SCHEMA:}
 
 Actuator exposes `health`, `info`, and `metrics`.
 
+When this application runs directly on the host, the default downstream URL uses
+the published Docker port `http://localhost:18090`. When both applications run in
+the same Docker Compose network, configure the AI MCP service with:
+
+```yaml
+environment:
+  SECURE_CODING_MCP_URL: http://secure-coding-mcp:8080
+```
+
+The downstream SecureCoding MCP client is enabled by default. Set
+`SECURE_CODING_MCP_ENABLED=false` only when AI-MCP must run without exposing the
+downstream `scan_project`, `scan_file`, `scan_source`, and `list_rules` tools.
+
+`SECURE_CODING_MCP_REQUEST_TIMEOUT` defaults to `60s`, and
+`SECURE_CODING_MCP_ENDPOINT` defaults to `/mcp`.
+
 ## Build and Test
 
 ```bash
@@ -282,6 +338,23 @@ On Windows:
 $env:JAVA_OPTS='-Djavax.net.ssl.trustStoreType=WINDOWS-ROOT'
 .\gradlew.bat clean test
 ```
+
+To verify the `legacy-interface` MCP server running in Docker, start the container
+and run the dedicated integration-test task:
+
+```powershell
+.\gradlew.bat legacyInterfaceMcpTest
+```
+
+The test initializes a Streamable HTTP MCP session, verifies `scan_project`, `scan_file`, `scan_source`, and `list_rules` are exposed,
+then invokes both `scan_source` and the read-only `list_rules` tool. The default endpoint is `http://localhost:18090/mcp`. Override it when needed:
+
+```powershell
+$env:LEGACY_INTERFACE_MCP_URL='http://localhost:18090/mcp'
+.\gradlew.bat legacyInterfaceMcpTest
+```
+
+The regular `test` task excludes this Docker-dependent integration test.
 
 If VS Code reports a Spring IO certificate error such as `PKIX path building failed`
 while fetching Spring project metadata, reload the VS Code window after opening this
