@@ -8,7 +8,7 @@ spring:
         stdio: false
         name: ai-mcp-server
         version: 0.0.1
-        instructions: MCP server exposing project analysis, server metadata, and DB-backed MyBatis artifact generation tools.
+        instructions: MCP server exposing project analysis, source ontology search, server metadata, and DB-backed MyBatis artifact generation tools.
         type: SYNC
         protocol: STREAMABLE
         request-timeout: 20s
@@ -25,8 +25,8 @@ spring:
           keep-alive-interval: 30s
           disallow-delete: true
       client:
-        enabled: ${SECURE_CODING_MCP_ENABLED:true}
-        name: ai-mcp-secure-coding-client
+        enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:true}}
+        name: ai-mcp-downstream-client
         version: 0.0.1
         initialized: true
         type: SYNC
@@ -36,13 +36,23 @@ spring:
             secure-coding-mcp:
               url: ${SECURE_CODING_MCP_URL:http://localhost:18090}
               endpoint: ${SECURE_CODING_MCP_ENDPOINT:/mcp}
+            easyocr-mcp:
+              url: ${EASYOCR_MCP_URL:http://localhost:8001}
+              endpoint: ${EASYOCR_MCP_ENDPOINT:/ocr}
 
 mcp:
   server:
     metadata:
       name: ai-mcp-server
       version: 0.0.1
-      description: MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.
+      description: MCP server for analyzing Java projects, querying source ontology, and generating MyBatis artifacts.
+
+  ontology:
+    neo4j:
+      uri: ${NEO4J_URI:bolt://localhost:7687}
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:}
+      database: ${NEO4J_DATABASE:neo4j}
 
   mybatis:
     datasource:

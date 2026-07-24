@@ -206,6 +206,37 @@ is optional for all table-scoped tools, and table names may be passed as
   ordinal position, index type, sort direction, cardinality, pages, and filter condition.
 - `describe_database_comments`: returns table remarks and column remarks.
 
+### Source ontology tool
+
+`search_source_ontology` performs read-only searches against the Java source graph
+stored in Neo4j. It supports these node types:
+
+- `JAVA_TYPE`: Java classes, interfaces, records, enums, and external types.
+- `METHOD`: declared and resolved method nodes.
+- `FIELD`: Java fields.
+- `API_ENDPOINT`: HTTP method and endpoint path nodes.
+- `SQL_STATEMENT`: MyBatis statement identifiers, namespaces, SQL, and operations.
+
+All arguments are optional. `nodeTypes` defaults to all five types, `limit` defaults
+to `50`, and the maximum limit is `100`. `query` is matched case-insensitively against
+names, FQNs, file paths, signatures, endpoint paths, namespaces, statement IDs, and
+SQL. `projectId` is an exact filter.
+
+Example:
+
+```json
+{
+  "nodeTypes": ["JAVA_TYPE", "METHOD", "API_ENDPOINT"],
+  "query": "user",
+  "projectId": "management",
+  "limit": 25
+}
+```
+
+The tool never creates, updates, or deletes Neo4j data. Configure a Neo4j account
+with read-only privileges for production use. If Neo4j is unavailable, AI-MCP can
+still start; only invocations of this tool fail.
+
 ### Secure coding tools
 
 The server connects to the configured `secure-coding-mcp` Streamable HTTP endpoint
@@ -241,6 +272,29 @@ Example `scan_source` arguments:
 `scan_source` forwards the source as an MCP tool argument. AI-MCP does not persist or
 log the source. The downstream server creates an isolated temporary file for Semgrep
 and deletes it immediately after the scan.
+
+### EasyOCR tools
+
+The server also connects to the configured EasyOCR Streamable HTTP endpoint and
+re-exposes its OCR tools through the same AI-MCP `/mcp` endpoint.
+
+- `ocr_image_file`: extracts Korean and English text from an image file visible to
+  the EasyOCR server and allowed by its `EASYOCR_ALLOWED_DIRS` setting.
+- `ocr_image_base64`: extracts text from a Base64 image or image data URL. Use this
+  tool when AI-MCP and EasyOCR do not share a filesystem.
+
+Example Base64 tool arguments:
+
+```json
+{
+  "image_base64": "data:image/png;base64,..."
+}
+```
+
+The downstream response contains the combined `text`, detected `regions`, region
+count, configured languages, and source. Invalid Base64 data, unsupported image
+types, files outside the allowed directories, and images larger than 20 MB are
+returned as tool errors.
 
 Example table lookup input:
 
@@ -294,12 +348,18 @@ Important properties:
 spring.ai.mcp.server.protocol: STREAMABLE
 spring.ai.mcp.server.streamable-http.mcp-endpoint: /mcp
 spring.ai.mcp.server.expose-mcp-client-tools: true
-spring.ai.mcp.client.enabled: ${SECURE_CODING_MCP_ENABLED:true}
+spring.ai.mcp.client.enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:true}}
 spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.url: ${SECURE_CODING_MCP_URL:http://localhost:18090}
 spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.endpoint: ${SECURE_CODING_MCP_ENDPOINT:/mcp}
+spring.ai.mcp.client.streamable-http.connections.easyocr-mcp.url: ${EASYOCR_MCP_URL:http://localhost:8001}
+spring.ai.mcp.client.streamable-http.connections.easyocr-mcp.endpoint: ${EASYOCR_MCP_ENDPOINT:/ocr}
 mcp.server.metadata.name: ai-mcp-server
 mcp.server.metadata.version: 0.0.1
-mcp.server.metadata.description: MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.
+mcp.server.metadata.description: MCP server for analyzing Java projects, querying source ontology, and generating MyBatis artifacts.
+mcp.ontology.neo4j.uri: ${NEO4J_URI:bolt://localhost:7687}
+mcp.ontology.neo4j.username: ${NEO4J_USERNAME:neo4j}
+mcp.ontology.neo4j.password: ${NEO4J_PASSWORD:}
+mcp.ontology.neo4j.database: ${NEO4J_DATABASE:neo4j}
 mcp.mybatis.datasource.url: ${MCP_MYBATIS_DB_URL:}
 mcp.mybatis.datasource.username: ${MCP_MYBATIS_DB_USERNAME:}
 mcp.mybatis.datasource.password: ${MCP_MYBATIS_DB_PASSWORD:}
@@ -319,12 +379,14 @@ environment:
   SECURE_CODING_MCP_URL: http://secure-coding-mcp:8080
 ```
 
-The downstream SecureCoding MCP client is enabled by default. Set
-`SECURE_CODING_MCP_ENABLED=false` only when AI-MCP must run without exposing the
-downstream `scan_project`, `scan_file`, `scan_source`, and `list_rules` tools.
+The downstream MCP client is enabled by default. Both SecureCoding MCP and EasyOCR
+MCP must be reachable while AI-MCP starts. Set `DOWNSTREAM_MCP_ENABLED=false` when
+AI-MCP must run without downstream tools. `SECURE_CODING_MCP_ENABLED` remains as a
+backward-compatible fallback for the global client switch.
 
 `SECURE_CODING_MCP_REQUEST_TIMEOUT` defaults to `60s`, and
-`SECURE_CODING_MCP_ENDPOINT` defaults to `/mcp`.
+`SECURE_CODING_MCP_ENDPOINT` defaults to `/mcp`. `EASYOCR_MCP_URL` defaults to
+`http://localhost:8001`, and `EASYOCR_MCP_ENDPOINT` defaults to `/ocr`.
 
 ## Build and Test
 

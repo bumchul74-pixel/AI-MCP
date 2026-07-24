@@ -6,16 +6,20 @@ import com.hanwha.mcp.application.dto.MyBatisGeneratorDefaults;
 import com.hanwha.mcp.application.service.AnalyzeProjectStructureService;
 import com.hanwha.mcp.application.service.DescribeServerService;
 import com.hanwha.mcp.application.service.GenerateMyBatisMapperService;
+import com.hanwha.mcp.application.service.SearchSourceOntologyService;
 import com.hanwha.mcp.application.usecase.AnalyzeProjectStructureUseCase;
 import com.hanwha.mcp.application.usecase.DescribeServerUseCase;
 import com.hanwha.mcp.application.usecase.GenerateMyBatisMapperUseCase;
+import com.hanwha.mcp.application.usecase.SearchSourceOntologyUseCase;
 import com.hanwha.mcp.domain.model.ServerMetadata;
 import com.hanwha.mcp.domain.repository.DatabaseSchemaInspector;
 import com.hanwha.mcp.domain.repository.ProjectStructureAnalyzer;
 import com.hanwha.mcp.domain.repository.ServerMetadataRepository;
+import com.hanwha.mcp.domain.repository.SourceOntologyRepository;
 import com.hanwha.mcp.infrastructure.adapter.ConfiguredServerMetadataRepository;
 import com.hanwha.mcp.infrastructure.adapter.FileSystemProjectStructureAnalyzer;
 import com.hanwha.mcp.infrastructure.adapter.JdbcDatabaseSchemaInspector;
+import com.hanwha.mcp.infrastructure.adapter.Neo4jSourceOntologyRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -65,4 +69,13 @@ public class ApplicationBeanConfig {
 		return new GenerateMyBatisMapperService(databaseSchemaInspector, defaults);
 	}
 
+	@Bean(destroyMethod = "close")
+	SourceOntologyRepository sourceOntologyRepository(Neo4jOntologyProperties properties) {
+		return new Neo4jSourceOntologyRepository(properties);
+	}
+
+	@Bean
+	SearchSourceOntologyUseCase searchSourceOntologyUseCase(SourceOntologyRepository repository) {
+		return new SearchSourceOntologyService(repository);
+	}
 }

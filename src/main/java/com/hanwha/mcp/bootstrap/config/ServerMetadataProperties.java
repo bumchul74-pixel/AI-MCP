@@ -16,7 +16,7 @@ public record ServerMetadataProperties(
 		version = defaultIfBlank(version, "0.0.1");
 		description = defaultIfBlank(
 				description,
-				"MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.");
+				"MCP server for analyzing Java projects, querying source ontology, and generating MyBatis artifacts.");
 	}
 
 	private static String defaultIfBlank(String value, String defaultValue) {

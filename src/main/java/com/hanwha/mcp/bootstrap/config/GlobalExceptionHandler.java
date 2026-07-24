@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -30,6 +31,11 @@ public class GlobalExceptionHandler {
 	ResponseEntity<StructuredErrorResponse> handleBadRequest(Exception exception) {
 		return ResponseEntity.badRequest()
 			.body(error("INVALID_REQUEST", sanitize(exception.getMessage()), Instant.now(this.clock)));
+	}
+
+	@ExceptionHandler(AsyncRequestNotUsableException.class)
+	void handleDisconnectedClient(AsyncRequestNotUsableException exception) {
+		log.debug("client_disconnected_during_async_response type={}", exception.getClass().getSimpleName());
 	}
 
 	@ExceptionHandler(Exception.class)

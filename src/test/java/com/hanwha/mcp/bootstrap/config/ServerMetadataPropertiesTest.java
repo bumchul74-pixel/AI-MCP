@@ -13,7 +13,7 @@ class ServerMetadataPropertiesTest {
 		assertThat(properties.name()).isEqualTo("ai-mcp-server");
 		assertThat(properties.version()).isEqualTo("0.0.1");
 		assertThat(properties.description())
-				.isEqualTo("MCP server for analyzing Gradle/Spring Boot projects and generating MyBatis artifacts from database metadata.");
+				.isEqualTo("MCP server for analyzing Java projects, querying source ontology, and generating MyBatis artifacts.");
 	}
 
 	@Test
