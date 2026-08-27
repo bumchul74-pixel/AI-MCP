@@ -63,3 +63,42 @@ tasks.register('legacyInterfaceMcpTest', Test) {
 			?: System.getenv('LEGACY_INTERFACE_MCP_URL')
 			?: 'http://localhost:18090/mcp'
 }
+
+
+def resolvePython = { String projectPath ->
+	def baseDirectory = file(projectPath)
+	def candidates = [
+		new File(baseDirectory, '.venv/Scripts/python.exe'),
+		new File(baseDirectory, '.venv/bin/python')
+	]
+	def virtualEnvPython = candidates.find { it.exists() }
+	if (virtualEnvPython != null) {
+		return virtualEnvPython.absolutePath
+	}
+	return System.getProperty('os.name').toLowerCase().contains('windows') ? 'python' : 'python3'
+}
+
+tasks.register('ragTest', Exec) {
+	group = 'verification'
+	description = 'Runs the Python RAG and OCR unit tests.'
+	workingDir file('rag-server')
+	commandLine resolvePython('rag-server'), '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py'
+}
+
+tasks.register('pptTest', Exec) {
+	group = 'verification'
+	description = 'Runs the Python PPT MCP unit tests.'
+        workingDir file('rag-server')
+        def pptPython = file('rag-server/.venv-ppt/Scripts/python.exe')
+        def pptPythonUnix = file('rag-server/.venv-ppt/bin/python')
+        def executable = pptPython.exists()
+                ? pptPython.absolutePath
+                : (pptPythonUnix.exists() ? pptPythonUnix.absolutePath : resolvePython('rag-server'))
+        commandLine executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_ppt_mcp.py'
+}
+
+tasks.register('pythonServicesTest') {
+	group = 'verification'
+	description = 'Runs all Python service unit tests owned by AI-MCP.'
+	dependsOn tasks.named('ragTest'), tasks.named('pptTest')
+}

@@ -296,6 +296,41 @@ count, configured languages, and source. Invalid Base64 data, unsupported image
 types, files outside the allowed directories, and images larger than 20 MB are
 returned as tool errors.
 
+### PowerPoint generation tools
+
+The server connects to the configured PPT generation Streamable HTTP endpoint and
+re-exposes its tools through the same AI-MCP `/mcp` endpoint.
+The Python implementation is located at `rag-server/app/ppt` and uses the
+`rag-server/.venv-ppt` environment, so it does not share dependencies with OCR or RAG.
+
+- `analyze_ppt_template`: analyzes slide masters, layouts, placeholders, dimensions,
+  and source-slide structure for a PPTX visible to the PPT server.
+- `generate_presentation`: generates an editable PPTX from content with the selected
+  template and returns the output path, digest, requested slide count, and actual
+  generated slide count.
+
+Example generation arguments:
+
+```json
+{
+  "content": "2026년 하반기 기술 전환 계획",
+  "template_path": "inbox/company-template.pptx",
+  "output_name": "2026-roadmap.pptx",
+  "slides": 10,
+  "language": "Korean",
+  "provider": "openai"
+}
+```
+
+Start the downstream server before enabling downstream MCP clients:
+
+```powershell
+cd rag-server
+./start-ppt-server.ps1
+```
+
+Template file access is controlled by the PPT server's `PPT_MCP_ALLOWED_DIRS`.
+
 Example table lookup input:
 
 ```json
@@ -348,11 +383,14 @@ Important properties:
 spring.ai.mcp.server.protocol: STREAMABLE
 spring.ai.mcp.server.streamable-http.mcp-endpoint: /mcp
 spring.ai.mcp.server.expose-mcp-client-tools: true
-spring.ai.mcp.client.enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:true}}
+spring.ai.mcp.client.enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:false}}
+spring.ai.mcp.client.request-timeout: ${DOWNSTREAM_MCP_REQUEST_TIMEOUT:${SECURE_CODING_MCP_REQUEST_TIMEOUT:900s}}
 spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.url: ${SECURE_CODING_MCP_URL:http://localhost:18090}
 spring.ai.mcp.client.streamable-http.connections.secure-coding-mcp.endpoint: ${SECURE_CODING_MCP_ENDPOINT:/mcp}
 spring.ai.mcp.client.streamable-http.connections.easyocr-mcp.url: ${EASYOCR_MCP_URL:http://localhost:8001}
 spring.ai.mcp.client.streamable-http.connections.easyocr-mcp.endpoint: ${EASYOCR_MCP_ENDPOINT:/ocr}
+spring.ai.mcp.client.streamable-http.connections.ppt-mcp.url: ${PPT_MCP_URL:http://localhost:8002}
+spring.ai.mcp.client.streamable-http.connections.ppt-mcp.endpoint: ${PPT_MCP_ENDPOINT:/ppt}
 mcp.server.metadata.name: ai-mcp-server
 mcp.server.metadata.version: 0.0.1
 mcp.server.metadata.description: MCP server for analyzing Java projects, querying source ontology, and generating MyBatis artifacts.
@@ -368,6 +406,8 @@ mcp.mybatis.generator.base-package: ${MCP_MYBATIS_BASE_PACKAGE:com.example.app}
 mcp.mybatis.generator.default-schema: ${MCP_MYBATIS_DEFAULT_SCHEMA:}
 ```
 
+Downstream MCP clients are disabled by default so the AI-MCP server can start without contacting local or external MCP services. Set `DOWNSTREAM_MCP_ENABLED=true` only when every configured downstream MCP connection is reachable. The legacy `SECURE_CODING_MCP_ENABLED=true` flag remains supported as an explicit opt-in.
+
 Actuator exposes `health`, `info`, and `metrics`.
 
 When this application runs directly on the host, the default downstream URL uses
@@ -379,14 +419,16 @@ environment:
   SECURE_CODING_MCP_URL: http://secure-coding-mcp:8080
 ```
 
-The downstream MCP client is enabled by default. Both SecureCoding MCP and EasyOCR
-MCP must be reachable while AI-MCP starts. Set `DOWNSTREAM_MCP_ENABLED=false` when
-AI-MCP must run without downstream tools. `SECURE_CODING_MCP_ENABLED` remains as a
-backward-compatible fallback for the global client switch.
+The downstream MCP client is disabled by default. When enabled, SecureCoding MCP,
+EasyOCR MCP, and PPT MCP must all be reachable while AI-MCP starts. Set
+`DOWNSTREAM_MCP_ENABLED=true` only after the configured downstream services are
+running. `SECURE_CODING_MCP_ENABLED` remains a backward-compatible fallback for
+the global client switch.
 
-`SECURE_CODING_MCP_REQUEST_TIMEOUT` defaults to `60s`, and
-`SECURE_CODING_MCP_ENDPOINT` defaults to `/mcp`. `EASYOCR_MCP_URL` defaults to
-`http://localhost:8001`, and `EASYOCR_MCP_ENDPOINT` defaults to `/ocr`.
+`DOWNSTREAM_MCP_REQUEST_TIMEOUT` defaults to `900s`; the legacy
+`SECURE_CODING_MCP_REQUEST_TIMEOUT` remains a fallback. `EASYOCR_MCP_URL` defaults
+to `http://localhost:8001` with endpoint `/ocr`. `PPT_MCP_URL` defaults to
+`http://localhost:8002` with endpoint `/ppt`.
 
 ## Build and Test
 
@@ -399,6 +441,9 @@ On Windows:
 ```powershell
 $env:JAVA_OPTS='-Djavax.net.ssl.trustStoreType=WINDOWS-ROOT'
 .\gradlew.bat clean test
+.\gradlew.bat ragTest
+.\gradlew.bat pptTest
+.\gradlew.bat pythonServicesTest
 ```
 
 To verify the `legacy-interface` MCP server running in Docker, start the container

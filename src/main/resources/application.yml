@@ -25,12 +25,12 @@ spring:
           keep-alive-interval: 30s
           disallow-delete: true
       client:
-        enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:true}}
+        enabled: ${DOWNSTREAM_MCP_ENABLED:${SECURE_CODING_MCP_ENABLED:false}}
         name: ai-mcp-downstream-client
         version: 0.0.1
         initialized: true
         type: SYNC
-        request-timeout: ${SECURE_CODING_MCP_REQUEST_TIMEOUT:60s}
+        request-timeout: ${DOWNSTREAM_MCP_REQUEST_TIMEOUT:${SECURE_CODING_MCP_REQUEST_TIMEOUT:900s}}
         streamable-http:
           connections:
             secure-coding-mcp:
@@ -39,6 +39,9 @@ spring:
             easyocr-mcp:
               url: ${EASYOCR_MCP_URL:http://localhost:8001}
               endpoint: ${EASYOCR_MCP_ENDPOINT:/ocr}
+            ppt-mcp:
+              url: ${PPT_MCP_URL:http://localhost:8002}
+              endpoint: ${PPT_MCP_ENDPOINT:/ppt}
 
 mcp:
   server:

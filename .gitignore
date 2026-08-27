@@ -32,7 +32,17 @@ out/
 /dist/
 /nbdist/
 /.nb-gradle/
+/logs/
+/uploads/
 
 ### VS Code ###
 .vscode/
 logs/
+
+### Python PPT MCP ###
+/rag-server/**/__pycache__/
+*.py[cod]
+/rag-server/.venv-ppt/
+/rag-server/data/ppt-jobs/
+/rag-server/data/ppt-smoke/
+/rag-server/output/
